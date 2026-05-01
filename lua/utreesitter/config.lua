@@ -39,6 +39,9 @@ local defaults = {
 		enable = false,
 		log_file = vim.fn.stdpath("cache") .. "/utreesitter.log",
 	},
+	integration = {
+		ucore_progress = true,
+	},
 }
 
 M.values = vim.deepcopy(defaults)

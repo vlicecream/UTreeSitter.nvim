@@ -2,6 +2,7 @@ local config = require("utreesitter.config")
 local filetype = require("utreesitter.filetype")
 local log = require("utreesitter.log")
 local parsers = require("utreesitter.parsers")
+local progress = require("utreesitter.progress")
 
 local M = {}
 
@@ -162,6 +163,7 @@ local function install_with_retry(remaining)
 	if remaining <= 0 then
 		installing = false
 		install_command_started = false
+		progress.fail("parser install timed out")
 		notify("unreal_cpp parser install did not finish before retries ended", vim.log.levels.WARN)
 		return
 	end
@@ -170,6 +172,7 @@ local function install_with_retry(remaining)
 		ensure_language()
 		installing = false
 		install_command_started = false
+		progress.finish()
 		retry_pending()
 		return
 	end
@@ -177,11 +180,13 @@ local function install_with_retry(remaining)
 	if any_pending_can_attach() then
 		installing = false
 		install_command_started = false
+		progress.finish()
 		retry_pending()
 		return
 	end
 
 	if not treesitter_ready() then
+		progress.progress(10)
 		vim.defer_fn(function()
 			install_with_retry(remaining - 1)
 		end, config.values.install.retry_delay_ms)
@@ -191,11 +196,13 @@ local function install_with_retry(remaining)
 	if not install_command_started then
 		notify("Installing unreal_cpp parser")
 	end
+	progress.progress(50)
 	run_parser_install()
 
 	if M.parser_installed() or any_pending_can_attach() then
 		ensure_language()
 		installing = false
+		progress.finish()
 		retry_pending()
 		return
 	end
@@ -247,6 +254,7 @@ function M.activate_buffer(bufnr)
 
 	if M.parser_can_attach(bufnr) then
 		pcall(vim.treesitter.start, bufnr, parser_name())
+		progress.finish()
 		return
 	end
 
@@ -285,9 +293,12 @@ function M.ensure_installed()
 
 	if M.parser_installed() then
 		ensure_language()
+		progress.finish()
 		activate_existing_buffers()
 		return
 	end
+
+	progress.progress(0)
 
 	if installing then
 		return
