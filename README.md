@@ -5,6 +5,7 @@ Neovim integration for the `UTreeSitter` Unreal C++ tree-sitter grammar.
 `UTreeSitter.nvim` owns the editor-facing highlighting layer:
 
 - registers the `unreal_cpp` parser with `nvim-treesitter`
+- bundles the generated parser sources so parser installation does not need to download `UTreeSitter`
 - exposes `queries/unreal_cpp` on Neovim's runtimepath
 - detects Unreal C++ files and assigns `ft=unreal_cpp`
 - installs and starts the parser when an Unreal C++ buffer opens
@@ -55,6 +56,7 @@ require("utreesitter").setup({
   parser = {
     name = "unreal_cpp",
     repo = "https://github.com/vlicecream/UTreeSitter",
+    use_bundled = true,
   },
   filetype = {
     enable = true,
@@ -80,6 +82,12 @@ require("utreesitter").setup({
 :UTreeSitterInfo
 :UTreeSitterInspect
 :checkhealth utreesitter
+```
+
+If an earlier install tried to download `tree-sitter-unreal_cpp` from GitHub and failed, update this plugin and run:
+
+```vim
+:UTreeSitterReinstall
 ```
 
 ## Repository Split

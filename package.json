@@ -1,0 +1,49 @@
+{
+  "name": "tree-sitter-unreal-cpp",
+  "version": "0.1.0",
+  "description": "Unreal C++ tree-sitter parser",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vlicecream/utreesitter.git"
+  },
+  "funding": "",
+  "license": "MIT",
+  "author": {
+    "name": "Ame林汀",
+    "email": "vlicecream@163.com",
+    "url": "https://vlicecream.github.io"
+  },
+  "main": "bindings/node",
+  "types": "bindings/node",
+  "keywords": [
+    "incremental",
+    "parsing",
+    "tree-sitter",
+    "unreal_cpp"
+  ],
+  "files": [
+    "grammar.js",
+    "tree-sitter.json",
+    "binding.gyp",
+    "prebuilds/**",
+    "bindings/node/*",
+    "queries/*",
+    "src/**",
+    "*.wasm"
+  ],
+  "dependencies": {
+    "node-addon-api": "^8.5.0",
+    "node-gyp-build": "^4.8.4",
+    "tree-sitter-cpp": "^0.23.4"
+  },
+  "devDependencies": {
+    "prebuildify": "^6.0.1",
+    "tree-sitter-cli": "^0.26.8"
+  },
+  "scripts": {
+    "install": "node-gyp-build",
+    "prestart": "tree-sitter build --wasm",
+    "start": "tree-sitter playground",
+    "test": "node --test bindings/node/*_test.js"
+  }
+}

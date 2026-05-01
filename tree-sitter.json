@@ -1,0 +1,42 @@
+{
+  "$schema": "https://tree-sitter.github.io/tree-sitter/assets/schemas/config.schema.json",
+  "grammars": [
+    {
+      "name": "unreal_cpp",
+      "camelcase": "UnrealCpp",
+      "title": "Unreal C++",
+      "scope": "source.unreal_cpp",
+      "file-types": [
+        "unreal_cpp"
+      ],
+      "injection-regex": "^unreal_cpp$",
+      "class-name": "TreeSitterUnrealCpp"
+    }
+  ],
+  "metadata": {
+    "version": "0.1.0",
+    "license": "MIT",
+    "description": "Unreal C++ tree-sitter parser",
+    "authors": [
+      {
+        "name": "Ame林汀",
+        "email": "vlicecream@163.com",
+        "url": "https://vlicecream.github.io"
+      }
+    ],
+    "links": {
+      "repository": "https://github.com/vlicecream/UTreeSitter",
+      "funding": ""
+    }
+  },
+  "bindings": {
+    "c": true,
+    "go": true,
+    "java": false,
+    "node": true,
+    "python": true,
+    "rust": true,
+    "swift": true,
+    "zig": false
+  }
+}

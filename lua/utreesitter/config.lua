@@ -7,6 +7,8 @@ local defaults = {
 		branch = "main",
 		files = { "src/parser.c", "src/scanner.c" },
 		queries = "queries/unreal_cpp",
+		use_bundled = true,
+		bundled_path = nil,
 		register_preload = true,
 	},
 	filetype = {

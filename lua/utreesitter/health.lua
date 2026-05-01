@@ -36,6 +36,7 @@ function M.check()
 	parsers.register()
 	if parsers.is_registered() then
 		ok("unreal_cpp parser config registered")
+		info("install source: " .. tostring(parsers.install_source()))
 	else
 		warn("unreal_cpp parser config is not registered")
 	end

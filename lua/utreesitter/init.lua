@@ -39,12 +39,26 @@ function M.parser_can_attach(bufnr)
 end
 
 local function treesitter_ready()
-	if vim.fn.exists(":TSInstallSync") ~= 2 then
+	if vim.fn.exists(":TSInstallSync") ~= 2 and vim.fn.exists(":TSInstall") ~= 2 then
 		return false
 	end
 
 	parsers.register()
 	return parsers.is_registered()
+end
+
+local function run_parser_install()
+	if vim.fn.exists(":TSInstallSync") == 2 then
+		pcall(vim.cmd, "TSInstallSync " .. parser_name())
+		return true
+	end
+
+	if vim.fn.exists(":TSInstall") == 2 then
+		pcall(vim.cmd, "TSInstall " .. parser_name())
+		return true
+	end
+
+	return false
 end
 
 local function retry_pending()
@@ -87,7 +101,7 @@ local function install_with_retry(remaining)
 	end
 
 	notify("Installing unreal_cpp parser")
-	pcall(vim.cmd, "TSInstallSync " .. parser_name())
+	run_parser_install()
 
 	if M.parser_installed() or any_pending_can_attach() then
 		installing = false
@@ -102,12 +116,11 @@ end
 
 function M.install()
 	parsers.register()
-	if vim.fn.exists(":TSInstallSync") ~= 2 then
-		notify("nvim-treesitter :TSInstallSync is not available", vim.log.levels.WARN)
+	if not run_parser_install() then
+		notify("nvim-treesitter :TSInstall/:TSInstallSync is not available", vim.log.levels.WARN)
 		return false
 	end
 
-	pcall(vim.cmd, "TSInstallSync " .. parser_name())
 	return M.parser_installed()
 end
 
@@ -169,6 +182,7 @@ function M.info()
 	return {
 		"parser: " .. parser_name(),
 		"parser registered: " .. tostring(parsers.is_registered()),
+		"install source: " .. tostring(parsers.install_source()),
 		"parser installed: " .. tostring(installed) .. (install_path and " (" .. install_path .. ")" or ""),
 		"highlights query: " .. tostring(query_loaded("highlights")),
 		"current filetype: " .. tostring(vim.bo[bufnr].filetype),

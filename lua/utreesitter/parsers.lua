@@ -2,18 +2,52 @@ local config = require("utreesitter.config")
 
 local M = {}
 
-local function parser_definition()
+local function plugin_root()
+	local source = debug.getinfo(1, "S").source:sub(2)
+	return vim.fn.fnamemodify(source, ":p:h:h:h")
+end
+
+local function bundled_root()
 	local parser = config.values.parser
+	local root = parser.bundled_path or plugin_root()
+	if parser.use_bundled == false then
+		return nil
+	end
+
+	if vim.fn.filereadable(root .. "/src/parser.c") == 1 and vim.fn.filereadable(root .. "/src/scanner.c") == 1 then
+		return root
+	end
+end
+
+function M.install_source()
+	local parser = config.values.parser
+	return bundled_root() or parser.repo
+end
+
+local function install_info()
+	local parser = config.values.parser
+	local source = M.install_source()
+	local info = {
+		files = parser.files,
+		queries = parser.queries,
+		generate_requires_npm = false,
+		requires_generate_from_grammar = false,
+	}
+
+	if source == parser.repo then
+		info.url = source
+		info.branch = parser.branch
+	else
+		info.path = source
+	end
+
+	return info
+end
+
+local function parser_definition()
 	return {
-		install_info = {
-			url = parser.repo,
-			files = parser.files,
-			branch = parser.branch,
-			queries = parser.queries,
-			generate_requires_npm = false,
-			requires_generate_from_grammar = false,
-		},
-		filetype = parser.name,
+		install_info = install_info(),
+		filetype = config.values.parser.name,
 		maintainers = { "@vlicecream" },
 		tier = 2,
 	}
