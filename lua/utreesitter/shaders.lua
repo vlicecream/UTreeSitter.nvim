@@ -214,4 +214,24 @@ function M.activate_existing_buffers()
 	end
 end
 
+function M.ensure_installed()
+	if config.values.install.auto_install == false then
+		return
+	end
+
+	if M.parser_installed() then
+		ensure_language()
+		M.activate_existing_buffers()
+		return
+	end
+
+	if installing then
+		return
+	end
+
+	installing = true
+	install_command_started = false
+	install_with_retry(config.values.install.retries)
+end
+
 return M

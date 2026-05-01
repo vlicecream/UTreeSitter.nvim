@@ -152,6 +152,7 @@ local function install_with_retry(remaining)
 		install_command_started = false
 		progress.finish()
 		retry_pending()
+		shaders.ensure_installed()
 		return
 	end
 
@@ -160,6 +161,7 @@ local function install_with_retry(remaining)
 		install_command_started = false
 		progress.finish()
 		retry_pending()
+		shaders.ensure_installed()
 		return
 	end
 
@@ -182,6 +184,7 @@ local function install_with_retry(remaining)
 		installing = false
 		progress.finish()
 		retry_pending()
+		shaders.ensure_installed()
 		return
 	end
 
@@ -260,6 +263,7 @@ function M.ensure_installed()
 		ensure_language()
 		progress.finish()
 		activate_existing_buffers()
+		shaders.ensure_installed()
 		return
 	end
 
@@ -357,11 +361,13 @@ function M.setup(opts)
 			vim.defer_fn(activate_existing_buffers, 500)
 			vim.defer_fn(shaders.activate_existing_buffers, 500)
 			vim.defer_fn(M.ensure_installed, 600)
+			vim.defer_fn(shaders.ensure_installed, 700)
 		end,
 	})
 
 	activate_existing_buffers()
 	shaders.activate_existing_buffers()
+	shaders.ensure_installed()
 	vim.defer_fn(M.ensure_installed, 100)
 	vim.defer_fn(M.ensure_installed, 500)
 	vim.defer_fn(M.ensure_installed, 1500)
