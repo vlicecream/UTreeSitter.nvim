@@ -1,6 +1,5 @@
 local config = require("utreesitter.config")
 local filetype = require("utreesitter.filetype")
-local log = require("utreesitter.log")
 local parsers = require("utreesitter.parsers")
 local progress = require("utreesitter.progress")
 
@@ -54,18 +53,15 @@ local function parser_paths()
 		add(path)
 	end
 
-	log.write("parser.paths", paths)
 	return paths
 end
 
 function M.parser_installed()
 	for _, path in ipairs(parser_paths()) do
 		if vim.fn.filereadable(path) == 1 then
-			log.write("parser.installed.true", path)
 			return true, path
 		end
 	end
-	log.write("parser.installed.false", parser_paths())
 	return false, nil
 end
 
@@ -76,59 +72,41 @@ local function ensure_language()
 	end
 
 	local ok, err = pcall(vim.treesitter.language.add, parser_name(), { path = path })
-	log.write("parser.language.add", { ok = ok, path = path, err = err })
 	return ok
 end
 
 function M.parser_can_attach(bufnr)
 	ensure_language()
 	local ok, parser_or_err = pcall(vim.treesitter.get_parser, bufnr or 0, parser_name())
-	log.write("parser.can_attach", {
-		bufnr = bufnr or 0,
-		ok = ok,
-		result = ok and "parser" or tostring(parser_or_err),
-	})
 	return ok, parser_or_err
 end
 
 local function treesitter_ready()
 	if vim.fn.exists(":TSInstallSync") ~= 2 and vim.fn.exists(":TSInstall") ~= 2 then
-		log.write("treesitter.ready.false", {
-			TSInstall = vim.fn.exists(":TSInstall"),
-			TSInstallSync = vim.fn.exists(":TSInstallSync"),
-		})
 		return false
 	end
 
 	parsers.register()
-	local registered = parsers.is_registered()
-	log.write("treesitter.ready", registered)
-	return registered
+	return parsers.is_registered()
 end
 
 local function run_parser_install()
 	if install_command_started then
-		log.write("install.command.skipped_already_started")
 		return true
 	end
 
 	install_command_started = true
 
 	if vim.fn.exists(":TSInstallSync") == 2 then
-		log.write("install.command", "TSInstallSync! " .. parser_name())
-		local ok, err = pcall(vim.cmd, "TSInstallSync! " .. parser_name())
-		log.write("install.command.result", { ok = ok, err = err })
+		pcall(vim.cmd, "TSInstallSync! " .. parser_name())
 		return true
 	end
 
 	if vim.fn.exists(":TSInstall") == 2 then
-		log.write("install.command", "TSInstall! " .. parser_name())
-		local ok, err = pcall(vim.cmd, "TSInstall! " .. parser_name())
-		log.write("install.command.result", { ok = ok, err = err })
+		pcall(vim.cmd, "TSInstall! " .. parser_name())
 		return true
 	end
 
-	log.write("install.command.missing")
 	install_command_started = false
 	return false
 end
@@ -159,7 +137,6 @@ local function any_pending_can_attach()
 end
 
 local function install_with_retry(remaining)
-	log.write("install.retry", { remaining = remaining, installing = installing })
 	if remaining <= 0 then
 		installing = false
 		install_command_started = false
@@ -213,7 +190,6 @@ local function install_with_retry(remaining)
 end
 
 function M.install()
-	log.write("install.manual")
 	install_command_started = false
 	parsers.register()
 	if not run_parser_install() then
@@ -238,12 +214,6 @@ end
 
 function M.activate_buffer(bufnr)
 	bufnr = bufnr or vim.api.nvim_get_current_buf()
-	log.write("buffer.activate.start", {
-		bufnr = bufnr,
-		valid = vim.api.nvim_buf_is_valid(bufnr),
-		filetype = vim.api.nvim_buf_is_valid(bufnr) and vim.bo[bufnr].filetype or nil,
-		name = vim.api.nvim_buf_is_valid(bufnr) and vim.api.nvim_buf_get_name(bufnr) or nil,
-	})
 	if not vim.api.nvim_buf_is_valid(bufnr) then
 		return
 	end
@@ -259,7 +229,6 @@ function M.activate_buffer(bufnr)
 	end
 
 	if config.values.install.auto_install == false then
-		log.write("buffer.activate.auto_install_disabled")
 		return
 	end
 
@@ -282,11 +251,6 @@ local function activate_existing_buffers()
 end
 
 function M.ensure_installed()
-	log.write("install.ensure", {
-		auto_install = config.values.install.auto_install,
-		installing = installing,
-	})
-
 	if config.values.install.auto_install == false then
 		return
 	end
@@ -312,7 +276,6 @@ end
 local function query_loaded(kind)
 	ensure_language()
 	local ok, query = pcall(vim.treesitter.query.get, parser_name(), kind)
-	log.write("query.loaded", { kind = kind, ok = ok, loaded = ok and query ~= nil or false, err = ok and nil or query })
 	return ok and query ~= nil
 end
 
@@ -355,11 +318,6 @@ end
 function M.setup(opts)
 	setup_done = true
 	config.setup(opts)
-	log.write("setup.start", {
-		install_source = parsers.install_source(),
-		auto_install = config.values.install.auto_install,
-		auto_start = config.values.highlight.auto_start,
-	})
 	parsers.setup()
 	filetype.setup()
 	require("utreesitter.highlights").setup()

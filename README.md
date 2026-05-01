@@ -87,19 +87,8 @@ require("utreesitter").setup({
 :UTreeSitterReinstall
 :UTreeSitterInfo
 :UTreeSitterInspect
-:UTreeSitterLog
 :checkhealth utreesitter
 ```
-
-To collect startup/install diagnostics:
-
-```lua
-require("utreesitter").setup({
-  debug = { enable = true },
-})
-```
-
-Then run `:UTreeSitterLog` and open that file.
 
 If an earlier install tried to download `tree-sitter-unreal_cpp` from GitHub and failed, update this plugin and run:
 
