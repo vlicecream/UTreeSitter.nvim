@@ -1,4 +1,5 @@
 local config = require("utreesitter.config")
+local log = require("utreesitter.log")
 
 local M = {}
 
@@ -75,6 +76,7 @@ end
 function M.register()
 	local ok, parsers = pcall(require, "nvim-treesitter.parsers")
 	if not ok or type(parsers) ~= "table" then
+		log.write("parser.register.require_failed", parsers)
 		return false
 	end
 
@@ -84,11 +86,13 @@ function M.register()
 	end
 
 	if type(configs) ~= "table" then
+		log.write("parser.register.invalid_configs", type(configs))
 		return false
 	end
 
 	augment(configs)
 	package.loaded["nvim-treesitter.parsers"] = parsers
+	log.write("parser.register.ok", install_info())
 	return true
 end
 
@@ -119,11 +123,14 @@ end
 function M.is_registered()
 	local ok, parsers = pcall(require, "nvim-treesitter.parsers")
 	if not ok or type(parsers) ~= "table" then
+		log.write("parser.is_registered.require_failed", parsers)
 		return false
 	end
 
 	local configs = type(parsers.get_parser_configs) == "function" and parsers.get_parser_configs() or parsers
-	return type(configs) == "table" and configs[config.values.parser.name] ~= nil
+	local registered = type(configs) == "table" and configs[config.values.parser.name] ~= nil
+	log.write("parser.is_registered", registered)
+	return registered
 end
 
 function M.setup()

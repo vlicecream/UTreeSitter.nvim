@@ -35,6 +35,10 @@ local defaults = {
 		auto_start = true,
 		default_links = true,
 	},
+	debug = {
+		enable = false,
+		log_file = vim.fn.stdpath("cache") .. "/utreesitter.log",
+	},
 }
 
 M.values = vim.deepcopy(defaults)

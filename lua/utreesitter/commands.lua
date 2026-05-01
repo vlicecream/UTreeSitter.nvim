@@ -16,6 +16,10 @@ function M.setup()
 	vim.api.nvim_create_user_command("UTreeSitterInspect", function()
 		require("utreesitter").inspect_buffer()
 	end, { desc = "Inspect the current buffer's Unreal tree-sitter state" })
+
+	vim.api.nvim_create_user_command("UTreeSitterLog", function()
+		require("utreesitter.log").notify_path()
+	end, { desc = "Show the UTreeSitter debug log path" })
 end
 
 return M
