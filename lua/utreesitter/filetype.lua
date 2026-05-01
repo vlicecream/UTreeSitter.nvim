@@ -10,6 +10,13 @@ local function extension_set()
 	return set
 end
 
+local function normalize(path)
+	if not path or path == "" then
+		return ""
+	end
+	return vim.fs.normalize(path):gsub("\\", "/")
+end
+
 local function has_supported_extension(path)
 	local ext = path and path:match("%.([^.\\/]*)$")
 	return ext and extension_set()[ext] == true
@@ -22,22 +29,58 @@ local function dirname(path)
 	return vim.fs.dirname(vim.fs.normalize(path))
 end
 
+local function detect_special(path)
+	local normalized = normalize(path)
+	if normalized:match("%.uproject$") or normalized:match("%.uplugin$") then
+		return "json"
+	end
+
+	if normalized:match("%.Build%.cs$") or normalized:match("%.Target%.cs$") then
+		return "cs"
+	end
+end
+
+local function match_any(path, patterns)
+	for _, pattern in ipairs(patterns) do
+		if path:match(pattern) then
+			return true
+		end
+	end
+	return false
+end
+
 local function path_has_unreal_layout(path)
-	local normalized = vim.fs.normalize(path):gsub("\\", "/")
-	return normalized:match("/Source/[^/]+/Public/") ~= nil
-		or normalized:match("/Source/[^/]+/Private/") ~= nil
-		or normalized:match("/Source/[^/]+/Classes/") ~= nil
-		or normalized:match("/Source/[^/]+/.+%.Build%.cs$") ~= nil
+	local normalized = normalize(path)
+	return match_any(normalized, {
+		"/Source/[^/]+/Public/",
+		"/Source/[^/]+/Private/",
+		"/Source/[^/]+/Classes/",
+		"/Plugins/.+/Source/.+/Public/",
+		"/Plugins/.+/Source/.+/Private/",
+		"/Plugins/.+/Source/.+/Classes/",
+		"/Engine/Source/.+/Public/",
+		"/Engine/Source/.+/Private/",
+		"/Engine/Source/.+/Classes/",
+		"/Source/.+%.Build%.cs$",
+		"/Source/.+%.Target%.cs$",
+	})
 end
 
 function M.is_unreal_path(path)
+	if detect_special(path) then
+		return true
+	end
+
 	local dir = dirname(path)
 	if not dir then
 		return false
 	end
 
 	local markers = vim.fs.find(function(name)
-		return name:match("%.uproject$") or name:match("%.uplugin$") or name:match("%.Build%.cs$")
+		return name:match("%.uproject$")
+			or name:match("%.uplugin$")
+			or name:match("%.Build%.cs$")
+			or name:match("%.Target%.cs$")
 	end, {
 		path = dir,
 		upward = true,
@@ -49,6 +92,11 @@ function M.is_unreal_path(path)
 end
 
 function M.detect(path)
+	local special = detect_special(path)
+	if special then
+		return special
+	end
+
 	local values = config.values
 	if not has_supported_extension(path) then
 		return nil
@@ -87,6 +135,20 @@ function M.setup()
 
 	vim.filetype.add({
 		extension = extension_map,
+		pattern = {
+			[".*%.uproject"] = function(path)
+				return M.detect(path)
+			end,
+			[".*%.uplugin"] = function(path)
+				return M.detect(path)
+			end,
+			[".*%.Build%.cs"] = function(path)
+				return M.detect(path)
+			end,
+			[".*%.Target%.cs"] = function(path)
+				return M.detect(path)
+			end,
+		},
 	})
 
 	vim.api.nvim_create_autocmd({ "BufReadPost", "BufNewFile" }, {

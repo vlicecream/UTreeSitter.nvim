@@ -8,11 +8,13 @@ Neovim integration for the `UTreeSitter` Unreal C++ tree-sitter grammar.
 - bundles the generated parser sources so parser installation does not need to download `UTreeSitter`
 - exposes `queries/unreal_cpp` on Neovim's runtimepath
 - detects Unreal C++ files and assigns `ft=unreal_cpp`
+- detects Unreal project metadata and rule files, mapping `.uproject` / `.uplugin` to `json` and `.Build.cs` / `.Target.cs` to `cs`
 - installs and starts the parser when an Unreal C++ buffer opens
 - links Unreal-specific captures to standard tree-sitter highlight groups
 - provides `:checkhealth utreesitter` and small debug commands
 
 The grammar and query source lives in [`UTreeSitter`](https://github.com/vlicecream/UTreeSitter). `UCore.nvim` does not manage highlighting.
+`unreal_cpp` is intentionally a separate parser name even though the grammar extends upstream `tree-sitter-cpp`; that keeps stock `cpp` behavior intact while allowing Unreal-specific queries and captures.
 
 ## Installation
 
@@ -78,7 +80,13 @@ require("utreesitter").setup({
 `unreal_only = true` avoids taking over every C++ file. A buffer becomes
 `unreal_cpp` when it is inside an Unreal project or plugin, detected by
 `.uproject`, `.uplugin`, `.Build.cs`, or standard
-`Source/<Module>/Public|Private|Classes` paths.
+`Source/<Module>/Public|Private|Classes` paths. Unreal Engine source layouts
+such as `Engine/Source/Runtime/.../Public` are also recognized.
+
+Special Unreal files keep their native editor filetypes:
+
+- `.uproject` / `.uplugin` -> `json`
+- `.Build.cs` / `.Target.cs` -> `cs`
 
 ## Commands
 
