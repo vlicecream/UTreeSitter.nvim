@@ -8,6 +8,7 @@ local M = {}
 local installing = false
 local install_command_started = false
 local pending_buffers = {}
+local setup_done = false
 
 local function parser_name()
 	return config.values.parser.name
@@ -335,6 +336,7 @@ function M.inspect_buffer()
 end
 
 function M.setup(opts)
+	setup_done = true
 	config.setup(opts)
 	log.write("setup.start", {
 		install_source = parsers.install_source(),
@@ -372,6 +374,10 @@ function M.setup(opts)
 	vim.defer_fn(M.ensure_installed, 100)
 	vim.defer_fn(M.ensure_installed, 500)
 	vim.defer_fn(M.ensure_installed, 1500)
+end
+
+function M.is_setup()
+	return setup_done
 end
 
 return M

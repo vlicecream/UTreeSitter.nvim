@@ -4,6 +4,11 @@ end
 
 vim.g.loaded_utreesitter = 1
 
-pcall(function()
-	require("utreesitter").setup()
+vim.schedule(function()
+	pcall(function()
+		local utreesitter = require("utreesitter")
+		if not utreesitter.is_setup() then
+			utreesitter.setup()
+		end
+	end)
 end)
