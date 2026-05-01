@@ -10,6 +10,10 @@ local function parser_name()
 	return "hlsl"
 end
 
+local function install_retries()
+	return math.max(config.values.install.retries or 0, 600)
+end
+
 local function notify(message, level)
 	vim.notify(message, level or vim.log.levels.INFO, { title = "UTreeSitter.nvim" })
 end
@@ -203,7 +207,7 @@ function M.activate_buffer(bufnr)
 
 	installing = true
 	install_command_started = false
-	install_with_retry(config.values.install.retries)
+	install_with_retry(install_retries())
 end
 
 function M.activate_existing_buffers()
@@ -231,7 +235,7 @@ function M.ensure_installed()
 
 	installing = true
 	install_command_started = false
-	install_with_retry(config.values.install.retries)
+	install_with_retry(install_retries())
 end
 
 return M

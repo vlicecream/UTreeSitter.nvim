@@ -35,9 +35,6 @@ local defaults = {
 		auto_start = true,
 		default_links = true,
 	},
-	integration = {
-		ucore_progress = false,
-	},
 }
 
 M.values = vim.deepcopy(defaults)

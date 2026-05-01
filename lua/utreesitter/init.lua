@@ -1,7 +1,6 @@
 local config = require("utreesitter.config")
 local filetype = require("utreesitter.filetype")
 local parsers = require("utreesitter.parsers")
-local progress = require("utreesitter.progress")
 local shaders = require("utreesitter.shaders")
 
 local M = {}
@@ -13,6 +12,10 @@ local setup_done = false
 
 local function parser_name()
 	return config.values.parser.name
+end
+
+local function install_retries()
+	return math.max(config.values.install.retries or 0, 600)
 end
 
 local function notify(message, level)
@@ -83,7 +86,8 @@ function M.parser_can_attach(bufnr)
 end
 
 local function treesitter_ready()
-	if vim.fn.exists(":TSInstallSync") ~= 2 and vim.fn.exists(":TSInstall") ~= 2 then
+	local ok, ts = pcall(require, "nvim-treesitter")
+	if not ok or type(ts.install) ~= "function" then
 		return false
 	end
 
@@ -97,19 +101,13 @@ local function run_parser_install()
 	end
 
 	install_command_started = true
-
-	if vim.fn.exists(":TSInstallSync") == 2 then
-		pcall(vim.cmd, "TSInstallSync! " .. parser_name())
-		return true
+	local ok = pcall(function()
+		require("nvim-treesitter").install({ parser_name(), "hlsl" }, { max_jobs = 1 })
+	end)
+	if not ok then
+		install_command_started = false
 	end
-
-	if vim.fn.exists(":TSInstall") == 2 then
-		pcall(vim.cmd, "TSInstall! " .. parser_name())
-		return true
-	end
-
-	install_command_started = false
-	return false
+	return ok
 end
 
 local function retry_pending()
@@ -141,7 +139,6 @@ local function install_with_retry(remaining)
 	if remaining <= 0 then
 		installing = false
 		install_command_started = false
-		progress.fail("parser install timed out")
 		notify("unreal_cpp parser install did not finish before retries ended", vim.log.levels.WARN)
 		return
 	end
@@ -150,7 +147,6 @@ local function install_with_retry(remaining)
 		ensure_language()
 		installing = false
 		install_command_started = false
-		progress.finish()
 		retry_pending()
 		shaders.ensure_installed()
 		return
@@ -159,14 +155,12 @@ local function install_with_retry(remaining)
 	if any_pending_can_attach() then
 		installing = false
 		install_command_started = false
-		progress.finish()
 		retry_pending()
 		shaders.ensure_installed()
 		return
 	end
 
 	if not treesitter_ready() then
-		progress.progress(10)
 		vim.defer_fn(function()
 			install_with_retry(remaining - 1)
 		end, config.values.install.retry_delay_ms)
@@ -174,15 +168,13 @@ local function install_with_retry(remaining)
 	end
 
 	if not install_command_started then
-		notify("Installing unreal_cpp parser")
+		notify("Installing unreal_cpp and hlsl parsers")
 	end
-	progress.progress(50)
 	run_parser_install()
 
 	if M.parser_installed() or any_pending_can_attach() then
 		ensure_language()
 		installing = false
-		progress.finish()
 		retry_pending()
 		shaders.ensure_installed()
 		return
@@ -228,7 +220,6 @@ function M.activate_buffer(bufnr)
 
 	if M.parser_can_attach(bufnr) then
 		pcall(vim.treesitter.start, bufnr, parser_name())
-		progress.finish()
 		return
 	end
 
@@ -242,7 +233,7 @@ function M.activate_buffer(bufnr)
 	end
 
 	installing = true
-	install_with_retry(config.values.install.retries)
+	install_with_retry(install_retries())
 end
 
 local function activate_existing_buffers()
@@ -261,13 +252,10 @@ function M.ensure_installed()
 
 	if M.parser_installed() then
 		ensure_language()
-		progress.finish()
 		activate_existing_buffers()
 		shaders.ensure_installed()
 		return
 	end
-
-	progress.progress(0)
 
 	if installing then
 		return
@@ -275,7 +263,7 @@ function M.ensure_installed()
 
 	installing = true
 	install_command_started = false
-	install_with_retry(config.values.install.retries)
+	install_with_retry(install_retries())
 end
 
 local function query_loaded(kind)
@@ -361,13 +349,11 @@ function M.setup(opts)
 			vim.defer_fn(activate_existing_buffers, 500)
 			vim.defer_fn(shaders.activate_existing_buffers, 500)
 			vim.defer_fn(M.ensure_installed, 600)
-			vim.defer_fn(shaders.ensure_installed, 700)
 		end,
 	})
 
 	activate_existing_buffers()
 	shaders.activate_existing_buffers()
-	shaders.ensure_installed()
 	vim.defer_fn(M.ensure_installed, 100)
 	vim.defer_fn(M.ensure_installed, 500)
 	vim.defer_fn(M.ensure_installed, 1500)

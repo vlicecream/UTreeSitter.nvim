@@ -10,7 +10,7 @@ Neovim integration for the `UTreeSitter` Unreal C++ tree-sitter grammar.
 - detects Unreal C++ files and assigns `ft=unreal_cpp`
 - detects Unreal project metadata and rule files, mapping `.uproject` / `.uplugin` to `json` and `.Build.cs` / `.Target.cs` to `cs`
 - detects Unreal shader files, mapping `.usf` / `.ush` / `.hlsl` / `.hlsli` to `hlsl` when the parser is available, otherwise falling back to `cpp`
-- auto-installs the upstream `hlsl` parser alongside `unreal_cpp`, then starts it for Unreal shader buffers
+- auto-installs `unreal_cpp` and the upstream `hlsl` parser together
 - installs and starts the parser when an Unreal C++ buffer opens
 - links Unreal-specific captures to standard tree-sitter highlight groups
 - provides `:checkhealth utreesitter` and small debug commands
@@ -78,9 +78,6 @@ require("utreesitter").setup({
     auto_start = true,
     default_links = true,
   },
-  integration = {
-    ucore_progress = false,
-  },
 })
 ```
 
@@ -95,9 +92,6 @@ Special Unreal files keep their native editor filetypes:
 - `.uproject` / `.uplugin` -> `json`
 - `.Build.cs` / `.Target.cs` -> `cs`
 - `.usf` / `.ush` / `.hlsl` / `.hlsli` -> `hlsl` when available, otherwise `cpp`
-
-`ucore_progress` is off by default. Enable it only if you explicitly want parser
-install progress to appear in `UCore`'s status panel.
 
 ## Commands
 
