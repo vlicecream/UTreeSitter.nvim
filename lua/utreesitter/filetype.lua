@@ -21,8 +21,19 @@ local function has_runtime_file(path)
 	return #vim.api.nvim_get_runtime_file(path, true) > 0
 end
 
+local function has_treesitter_parser(name)
+	local ok, parsers = pcall(require, "nvim-treesitter.parsers")
+	if not ok or type(parsers) ~= "table" then
+		return false
+	end
+
+	local configs = type(parsers.get_parser_configs) == "function" and parsers.get_parser_configs() or parsers
+	return type(configs) == "table" and configs[name] ~= nil
+end
+
 local function preferred_shader_filetype()
-	if has_runtime_file("syntax/hlsl.vim")
+	if has_treesitter_parser("hlsl")
+		or has_runtime_file("syntax/hlsl.vim")
 		or has_runtime_file("ftplugin/hlsl.vim")
 		or has_runtime_file("indent/hlsl.vim")
 		or has_runtime_file("queries/hlsl/highlights.scm")
