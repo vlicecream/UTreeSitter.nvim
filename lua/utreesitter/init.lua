@@ -2,6 +2,7 @@ local config = require("utreesitter.config")
 local filetype = require("utreesitter.filetype")
 local parsers = require("utreesitter.parsers")
 local progress = require("utreesitter.progress")
+local shaders = require("utreesitter.shaders")
 
 local M = {}
 
@@ -78,7 +79,7 @@ end
 function M.parser_can_attach(bufnr)
 	ensure_language()
 	local ok, parser_or_err = pcall(vim.treesitter.get_parser, bufnr or 0, parser_name())
-	return ok, parser_or_err
+	return ok and parser_or_err ~= nil, parser_or_err
 end
 
 local function treesitter_ready()
@@ -335,17 +336,32 @@ function M.setup(opts)
 		end,
 	})
 
+	vim.api.nvim_create_autocmd("FileType", {
+		pattern = "hlsl",
+		group = vim.api.nvim_create_augroup("UTreeSitterHlslActivate", { clear = true }),
+		callback = function(ev)
+			if config.values.highlight.auto_start then
+				vim.schedule(function()
+					shaders.activate_buffer(ev.buf)
+				end)
+			end
+		end,
+	})
+
 	vim.api.nvim_create_autocmd("User", {
 		pattern = { "LazyDone", "VeryLazy" },
 		group = vim.api.nvim_create_augroup("UTreeSitterLazyRetry", { clear = true }),
 		callback = function()
 			vim.defer_fn(activate_existing_buffers, 100)
+			vim.defer_fn(shaders.activate_existing_buffers, 100)
 			vim.defer_fn(activate_existing_buffers, 500)
+			vim.defer_fn(shaders.activate_existing_buffers, 500)
 			vim.defer_fn(M.ensure_installed, 600)
 		end,
 	})
 
 	activate_existing_buffers()
+	shaders.activate_existing_buffers()
 	vim.defer_fn(M.ensure_installed, 100)
 	vim.defer_fn(M.ensure_installed, 500)
 	vim.defer_fn(M.ensure_installed, 1500)
