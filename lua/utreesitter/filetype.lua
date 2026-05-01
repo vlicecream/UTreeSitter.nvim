@@ -17,6 +17,23 @@ local function normalize(path)
 	return vim.fs.normalize(path):gsub("\\", "/")
 end
 
+local function has_runtime_file(path)
+	return #vim.api.nvim_get_runtime_file(path, true) > 0
+end
+
+local function preferred_shader_filetype()
+	if has_runtime_file("syntax/hlsl.vim")
+		or has_runtime_file("ftplugin/hlsl.vim")
+		or has_runtime_file("indent/hlsl.vim")
+		or has_runtime_file("queries/hlsl/highlights.scm")
+		or #vim.api.nvim_get_runtime_file("parser/hlsl.*", true) > 0
+	then
+		return "hlsl"
+	end
+
+	return "cpp"
+end
+
 local function has_supported_extension(path)
 	local ext = path and path:match("%.([^.\\/]*)$")
 	return ext and extension_set()[ext] == true
@@ -37,6 +54,10 @@ local function detect_special(path)
 
 	if normalized:match("%.Build%.cs$") or normalized:match("%.Target%.cs$") then
 		return "cs"
+	end
+
+	if normalized:match("%.hlsl$") or normalized:match("%.hlsli$") or normalized:match("%.usf$") or normalized:match("%.ush$") then
+		return preferred_shader_filetype()
 	end
 end
 
@@ -146,6 +167,18 @@ function M.setup()
 				return M.detect(path)
 			end,
 			[".*%.Target%.cs"] = function(path)
+				return M.detect(path)
+			end,
+			[".*%.hlsl"] = function(path)
+				return M.detect(path)
+			end,
+			[".*%.hlsli"] = function(path)
+				return M.detect(path)
+			end,
+			[".*%.usf"] = function(path)
+				return M.detect(path)
+			end,
+			[".*%.ush"] = function(path)
 				return M.detect(path)
 			end,
 		},

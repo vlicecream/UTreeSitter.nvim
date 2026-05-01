@@ -9,6 +9,7 @@ Neovim integration for the `UTreeSitter` Unreal C++ tree-sitter grammar.
 - exposes `queries/unreal_cpp` on Neovim's runtimepath
 - detects Unreal C++ files and assigns `ft=unreal_cpp`
 - detects Unreal project metadata and rule files, mapping `.uproject` / `.uplugin` to `json` and `.Build.cs` / `.Target.cs` to `cs`
+- detects Unreal shader files, mapping `.usf` / `.ush` / `.hlsl` / `.hlsli` to `hlsl` when HLSL support exists, otherwise falling back to `cpp`
 - installs and starts the parser when an Unreal C++ buffer opens
 - links Unreal-specific captures to standard tree-sitter highlight groups
 - provides `:checkhealth utreesitter` and small debug commands
@@ -87,6 +88,7 @@ Special Unreal files keep their native editor filetypes:
 
 - `.uproject` / `.uplugin` -> `json`
 - `.Build.cs` / `.Target.cs` -> `cs`
+- `.usf` / `.ush` / `.hlsl` / `.hlsli` -> `hlsl` when available, otherwise `cpp`
 
 ## Commands
 
