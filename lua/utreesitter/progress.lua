@@ -40,7 +40,9 @@ function M.finish()
 	end
 
 	completed = true
-	ucore_status.progress_finish(title, string.format("%s 100%%", title))
+	-- Keep the 100% line in UCore's status panel. UCore clears it with the
+	-- rest of the initialization frame when boot finishes.
+	ucore_status.progress(title, string.format("%s 100%%", title))
 end
 
 function M.fail(message)

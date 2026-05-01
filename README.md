@@ -31,7 +31,9 @@ return {
 }
 ```
 
-### Local Development Only
+No extra configuration is required for normal use.
+
+### Advanced Options
 
 ```lua
 return {
@@ -51,10 +53,6 @@ The `dir = ...` form is only for developing this plugin from a local checkout.
 Normal users should install `vlicecream/UTreeSitter.nvim` as shown above. The
 plugin automatically uses its own installed directory as the parser source; no
 user-provided local path is required.
-
-## Configuration
-
-Defaults are intended to work without user configuration:
 
 ```lua
 require("utreesitter").setup({
@@ -77,7 +75,10 @@ require("utreesitter").setup({
 })
 ```
 
-`unreal_only = true` avoids taking over every C++ file. A buffer becomes `unreal_cpp` when it is inside an Unreal project or plugin, detected by `.uproject`, `.uplugin`, `.Build.cs`, or standard `Source/<Module>/Public|Private|Classes` paths.
+`unreal_only = true` avoids taking over every C++ file. A buffer becomes
+`unreal_cpp` when it is inside an Unreal project or plugin, detected by
+`.uproject`, `.uplugin`, `.Build.cs`, or standard
+`Source/<Module>/Public|Private|Classes` paths.
 
 ## Commands
 
