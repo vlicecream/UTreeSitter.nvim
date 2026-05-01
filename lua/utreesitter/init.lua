@@ -6,6 +6,7 @@ local parsers = require("utreesitter.parsers")
 local M = {}
 
 local installing = false
+local install_command_started = false
 local pending_buffers = {}
 
 local function parser_name()
@@ -63,6 +64,13 @@ local function treesitter_ready()
 end
 
 local function run_parser_install()
+	if install_command_started then
+		log.write("install.command.skipped_already_started")
+		return true
+	end
+
+	install_command_started = true
+
 	if vim.fn.exists(":TSInstallSync") == 2 then
 		log.write("install.command", "TSInstallSync " .. parser_name())
 		local ok, err = pcall(vim.cmd, "TSInstallSync " .. parser_name())
@@ -78,6 +86,7 @@ local function run_parser_install()
 	end
 
 	log.write("install.command.missing")
+	install_command_started = false
 	return false
 end
 
@@ -104,12 +113,21 @@ local function install_with_retry(remaining)
 	log.write("install.retry", { remaining = remaining, installing = installing })
 	if remaining <= 0 then
 		installing = false
+		install_command_started = false
 		notify("unreal_cpp parser install did not finish before retries ended", vim.log.levels.WARN)
+		return
+	end
+
+	if M.parser_installed() then
+		installing = false
+		install_command_started = false
+		retry_pending()
 		return
 	end
 
 	if any_pending_can_attach() then
 		installing = false
+		install_command_started = false
 		retry_pending()
 		return
 	end
@@ -137,6 +155,7 @@ end
 
 function M.install()
 	log.write("install.manual")
+	install_command_started = false
 	parsers.register()
 	if not run_parser_install() then
 		notify("nvim-treesitter :TSInstall/:TSInstallSync is not available", vim.log.levels.WARN)
@@ -196,6 +215,30 @@ local function activate_existing_buffers()
 			M.activate_buffer(bufnr)
 		end
 	end
+end
+
+function M.ensure_installed()
+	log.write("install.ensure", {
+		auto_install = config.values.install.auto_install,
+		installing = installing,
+	})
+
+	if config.values.install.auto_install == false then
+		return
+	end
+
+	if M.parser_installed() then
+		activate_existing_buffers()
+		return
+	end
+
+	if installing then
+		return
+	end
+
+	installing = true
+	install_command_started = false
+	install_with_retry(config.values.install.retries)
 end
 
 local function query_loaded(kind)
@@ -269,10 +312,14 @@ function M.setup(opts)
 		callback = function()
 			vim.defer_fn(activate_existing_buffers, 100)
 			vim.defer_fn(activate_existing_buffers, 500)
+			vim.defer_fn(M.ensure_installed, 600)
 		end,
 	})
 
 	activate_existing_buffers()
+	vim.defer_fn(M.ensure_installed, 100)
+	vim.defer_fn(M.ensure_installed, 500)
+	vim.defer_fn(M.ensure_installed, 1500)
 end
 
 return M

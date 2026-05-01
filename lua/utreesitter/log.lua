@@ -20,7 +20,7 @@ function M.write(event, data)
 
 	local line = os.date("%Y-%m-%d %H:%M:%S") .. " " .. event
 	if data ~= nil then
-		line = line .. " " .. stringify(data)
+		line = line .. " " .. stringify(data):gsub("%s+", " ")
 	end
 
 	local path = M.path()
