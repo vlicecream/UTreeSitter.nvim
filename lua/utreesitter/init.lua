@@ -18,13 +18,42 @@ local function notify(message, level)
 end
 
 local function parser_paths()
-	local parser_dir = vim.fn.stdpath("data") .. "/site/parser"
 	local name = parser_name()
-	return {
-		parser_dir .. "/" .. name .. ".so",
-		parser_dir .. "/" .. name .. ".dll",
-		parser_dir .. "/" .. name .. ".dylib",
-	}
+	local paths = {}
+	local seen = {}
+
+	local function add(path)
+		if path and path ~= "" then
+			local normalized = vim.fs.normalize(path)
+			if not seen[normalized] then
+				seen[normalized] = true
+				table.insert(paths, normalized)
+			end
+		end
+	end
+
+	local function add_from_dir(dir)
+		if not dir or dir == "" then
+			return
+		end
+		add(dir .. "/" .. name .. ".so")
+		add(dir .. "/" .. name .. ".dll")
+		add(dir .. "/" .. name .. ".dylib")
+	end
+
+	add_from_dir(vim.fn.stdpath("data") .. "/site/parser")
+
+	local ok_config, ts_config = pcall(require, "nvim-treesitter.config")
+	if ok_config and type(ts_config.get_install_dir) == "function" then
+		add_from_dir(ts_config.get_install_dir("parser"))
+	end
+
+	for _, path in ipairs(vim.api.nvim_get_runtime_file("parser/" .. name .. ".*", true)) do
+		add(path)
+	end
+
+	log.write("parser.paths", paths)
+	return paths
 end
 
 function M.parser_installed()
@@ -38,7 +67,19 @@ function M.parser_installed()
 	return false, nil
 end
 
+local function ensure_language()
+	local installed, path = M.parser_installed()
+	if not installed then
+		return false
+	end
+
+	local ok, err = pcall(vim.treesitter.language.add, parser_name(), { path = path })
+	log.write("parser.language.add", { ok = ok, path = path, err = err })
+	return ok
+end
+
 function M.parser_can_attach(bufnr)
+	ensure_language()
 	local ok, parser_or_err = pcall(vim.treesitter.get_parser, bufnr or 0, parser_name())
 	log.write("parser.can_attach", {
 		bufnr = bufnr or 0,
@@ -72,15 +113,15 @@ local function run_parser_install()
 	install_command_started = true
 
 	if vim.fn.exists(":TSInstallSync") == 2 then
-		log.write("install.command", "TSInstallSync " .. parser_name())
-		local ok, err = pcall(vim.cmd, "TSInstallSync " .. parser_name())
+		log.write("install.command", "TSInstallSync! " .. parser_name())
+		local ok, err = pcall(vim.cmd, "TSInstallSync! " .. parser_name())
 		log.write("install.command.result", { ok = ok, err = err })
 		return true
 	end
 
 	if vim.fn.exists(":TSInstall") == 2 then
-		log.write("install.command", "TSInstall " .. parser_name())
-		local ok, err = pcall(vim.cmd, "TSInstall " .. parser_name())
+		log.write("install.command", "TSInstall! " .. parser_name())
+		local ok, err = pcall(vim.cmd, "TSInstall! " .. parser_name())
 		log.write("install.command.result", { ok = ok, err = err })
 		return true
 	end
@@ -119,6 +160,7 @@ local function install_with_retry(remaining)
 	end
 
 	if M.parser_installed() then
+		ensure_language()
 		installing = false
 		install_command_started = false
 		retry_pending()
@@ -139,10 +181,13 @@ local function install_with_retry(remaining)
 		return
 	end
 
-	notify("Installing unreal_cpp parser")
+	if not install_command_started then
+		notify("Installing unreal_cpp parser")
+	end
 	run_parser_install()
 
 	if M.parser_installed() or any_pending_can_attach() then
+		ensure_language()
 		installing = false
 		retry_pending()
 		return
@@ -162,7 +207,11 @@ function M.install()
 		return false
 	end
 
-	return M.parser_installed()
+	local installed = M.parser_installed()
+	if installed then
+		ensure_language()
+	end
+	return installed
 end
 
 function M.reinstall()
@@ -228,6 +277,7 @@ function M.ensure_installed()
 	end
 
 	if M.parser_installed() then
+		ensure_language()
 		activate_existing_buffers()
 		return
 	end
@@ -242,7 +292,9 @@ function M.ensure_installed()
 end
 
 local function query_loaded(kind)
+	ensure_language()
 	local ok, query = pcall(vim.treesitter.query.get, parser_name(), kind)
+	log.write("query.loaded", { kind = kind, ok = ok, loaded = ok and query ~= nil or false, err = ok and nil or query })
 	return ok and query ~= nil
 end
 
