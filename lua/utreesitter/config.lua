@@ -36,7 +36,7 @@ local defaults = {
 		default_links = true,
 	},
 	integration = {
-		ucore_progress = true,
+		ucore_progress = false,
 	},
 }
 

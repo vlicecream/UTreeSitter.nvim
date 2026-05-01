@@ -37,6 +37,7 @@ return {
 
 No extra configuration is required for normal use.
 With `install.auto_install = true`, `UTreeSitter.nvim` ensures both `unreal_cpp` and `hlsl` are installed automatically.
+That install starts when the plugin sets itself up; it does not wait for an Unreal project buffer to open.
 
 ### Advanced Options
 
@@ -77,6 +78,9 @@ require("utreesitter").setup({
     auto_start = true,
     default_links = true,
   },
+  integration = {
+    ucore_progress = false,
+  },
 })
 ```
 
@@ -91,6 +95,9 @@ Special Unreal files keep their native editor filetypes:
 - `.uproject` / `.uplugin` -> `json`
 - `.Build.cs` / `.Target.cs` -> `cs`
 - `.usf` / `.ush` / `.hlsl` / `.hlsli` -> `hlsl` when available, otherwise `cpp`
+
+`ucore_progress` is off by default. Enable it only if you explicitly want parser
+install progress to appear in `UCore`'s status panel.
 
 ## Commands
 
