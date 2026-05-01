@@ -31,7 +31,7 @@ return {
 }
 ```
 
-### Local Development
+### Local Development Only
 
 ```lua
 return {
@@ -46,6 +46,11 @@ return {
   },
 }
 ```
+
+The `dir = ...` form is only for developing this plugin from a local checkout.
+Normal users should install `vlicecream/UTreeSitter.nvim` as shown above. The
+plugin automatically uses its own installed directory as the parser source; no
+user-provided local path is required.
 
 ## Configuration
 
