@@ -140,6 +140,12 @@ local function retry_pending()
 			M.activate_buffer(bufnr)
 		end
 	end
+
+	for _, bufnr in ipairs(vim.api.nvim_list_bufs()) do
+		if vim.api.nvim_buf_is_valid(bufnr) and vim.bo[bufnr].filetype == parser_name() then
+			M.activate_buffer(bufnr)
+		end
+	end
 end
 
 local function any_pending_can_attach()
