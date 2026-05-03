@@ -45,105 +45,7 @@ The grammar source itself lives in [`UTreeSitter`](https://github.com/vlicecream
 
 ### Installation
 
-#### Recommended Stack
-
-```lua
-return {
-  {
-    "vlicecream/UTreeSitter.nvim",
-    main = "utreesitter",
-    lazy = false,
-    dependencies = {
-      {
-        "nvim-treesitter/nvim-treesitter",
-        build = ":TSUpdate",
-        opts = function(_, opts)
-          opts = opts or {}
-          opts.auto_install = true
-          opts.indent = { enable = true }
-          return opts
-        end,
-      },
-    },
-    opts = {},
-  },
-
-  {
-    "vlicecream/UVersionControlSystem.nvim",
-    main = "uvcs",
-    lazy = false,
-    opts = {
-      enable = true,
-      prompt_on_readonly_save = true,
-      provider = "auto",
-      p4 = {
-        command = "p4",
-        -- port = "127.0.0.1:1666",
-        -- user = "YourUser",
-        -- client = "YourWorkspace",
-      },
-    },
-  },
-
-  {
-    "vlicecream/UCore.nvim",
-    main = "ucore",
-    lazy = false,
-    build = "pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/build.ps1",
-    dependencies = {
-      {
-        "windwp/nvim-autopairs",
-        event = "InsertEnter",
-        opts = {},
-      },
-
-      {
-        "saghen/blink.cmp",
-        opts = function(_, opts)
-          opts.sources = opts.sources or {}
-          opts.sources.default = opts.sources.default or { "lsp", "path", "snippets", "buffer" }
-
-          if not vim.tbl_contains(opts.sources.default, "ucore") then
-            table.insert(opts.sources.default, "ucore")
-          end
-
-          opts.sources.providers = opts.sources.providers or {}
-          opts.sources.providers.ucore = {
-            name = "UCore",
-            module = "ucore.completion.blink",
-            async = true,
-            timeout_ms = 2000,
-            min_keyword_length = 0,
-            score_offset = 50,
-          }
-
-          return opts
-        end,
-      },
-
-      {
-        "nvim-telescope/telescope.nvim",
-        dependencies = {
-          "nvim-lua/plenary.nvim",
-          "nvim-tree/nvim-web-devicons",
-        },
-      },
-    },
-    opts = {
-      auto_boot = true,
-      completion = {
-        enable = true,
-        keymap = "<C-l>",
-      },
-      ui = {
-        picker = "telescope",
-      },
-    },
-  },
-}
-```
-
-#### Standalone
+#### UTreeSitter Only
 
 ```lua
 return {
@@ -169,6 +71,11 @@ return {
 ```
 
 For normal use, `opts = {}` is enough.
+
+Optional companion plugins:
+
+- install `UCore.nvim` if you want Unreal project indexing, completion, navigation, and diagnostics
+- install `UVersionControlSystem.nvim` if you want Unreal VCS actions
 
 ### Quick Start
 
@@ -280,105 +187,7 @@ MIT
 
 ### 安装
 
-#### 推荐组合
-
-```lua
-return {
-  {
-    "vlicecream/UTreeSitter.nvim",
-    main = "utreesitter",
-    lazy = false,
-    dependencies = {
-      {
-        "nvim-treesitter/nvim-treesitter",
-        build = ":TSUpdate",
-        opts = function(_, opts)
-          opts = opts or {}
-          opts.auto_install = true
-          opts.indent = { enable = true }
-          return opts
-        end,
-      },
-    },
-    opts = {},
-  },
-
-  {
-    "vlicecream/UVersionControlSystem.nvim",
-    main = "uvcs",
-    lazy = false,
-    opts = {
-      enable = true,
-      prompt_on_readonly_save = true,
-      provider = "auto",
-      p4 = {
-        command = "p4",
-        -- port = "127.0.0.1:1666",
-        -- user = "YourUser",
-        -- client = "YourWorkspace",
-      },
-    },
-  },
-
-  {
-    "vlicecream/UCore.nvim",
-    main = "ucore",
-    lazy = false,
-    build = "pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/build.ps1",
-    dependencies = {
-      {
-        "windwp/nvim-autopairs",
-        event = "InsertEnter",
-        opts = {},
-      },
-
-      {
-        "saghen/blink.cmp",
-        opts = function(_, opts)
-          opts.sources = opts.sources or {}
-          opts.sources.default = opts.sources.default or { "lsp", "path", "snippets", "buffer" }
-
-          if not vim.tbl_contains(opts.sources.default, "ucore") then
-            table.insert(opts.sources.default, "ucore")
-          end
-
-          opts.sources.providers = opts.sources.providers or {}
-          opts.sources.providers.ucore = {
-            name = "UCore",
-            module = "ucore.completion.blink",
-            async = true,
-            timeout_ms = 2000,
-            min_keyword_length = 0,
-            score_offset = 50,
-          }
-
-          return opts
-        end,
-      },
-
-      {
-        "nvim-telescope/telescope.nvim",
-        dependencies = {
-          "nvim-lua/plenary.nvim",
-          "nvim-tree/nvim-web-devicons",
-        },
-      },
-    },
-    opts = {
-      auto_boot = true,
-      completion = {
-        enable = true,
-        keymap = "<C-l>",
-      },
-      ui = {
-        picker = "telescope",
-      },
-    },
-  },
-}
-```
-
-#### 单独使用
+#### 仅安装 UTreeSitter
 
 ```lua
 return {
@@ -404,6 +213,11 @@ return {
 ```
 
 正常使用时，`opts = {}` 就够了。
+
+可选配套插件：
+
+- 需要 Unreal 项目索引、补全、跳转、诊断时再装 `UCore.nvim`
+- 需要 Unreal VCS 操作时再装 `UVersionControlSystem.nvim`
 
 ### 快速开始
 
