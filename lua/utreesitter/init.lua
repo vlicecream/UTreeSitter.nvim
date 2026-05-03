@@ -309,6 +309,7 @@ function M.inspect_buffer()
 end
 
 function M.setup(opts)
+	M.reset()
 	setup_done = true
 	config.setup(opts)
 	parsers.setup()
@@ -361,6 +362,30 @@ end
 
 function M.is_setup()
 	return setup_done
+end
+
+function M.reset()
+	installing = false
+	install_command_started = false
+	pending_buffers = {}
+	setup_done = false
+
+	pcall(function()
+		require("utreesitter.commands").reset()
+	end)
+	pcall(function()
+		require("utreesitter.shaders").reset()
+	end)
+
+	for _, group in ipairs({
+		"UTreeSitterUnrealCppActivate",
+		"UTreeSitterHlslActivate",
+		"UTreeSitterLazyRetry",
+		"UTreeSitterFiletype",
+		"UTreeSitterHighlightLinks",
+	}) do
+		pcall(vim.api.nvim_del_augroup_by_name, group)
+	end
 end
 
 return M

@@ -238,4 +238,10 @@ function M.ensure_installed()
 	install_with_retry(install_retries())
 end
 
+function M.reset()
+	installing = false
+	install_command_started = false
+	pending_buffers = {}
+end
+
 return M
