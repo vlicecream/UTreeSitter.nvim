@@ -1,3 +1,9 @@
+-- Author: Ame林汀
+-- Website: vlicecream.github.io
+-- File: lua/utreesitter/health.lua
+-- Purpose: Report UTreeSitter parser, query, and dependency health through :checkhealth.
+-- License: MIT
+
 local config = require("utreesitter.config")
 local filetype = require("utreesitter.filetype")
 local parsers = require("utreesitter.parsers")
@@ -10,16 +16,22 @@ local ok = health.ok or health.report_ok
 local warn = health.warn or health.report_warn
 local info = health.info or health.report_info
 
+-- Return whether one Lua module can be required successfully.
+-- 返回是否可以成功请求一个Lua模块。
 local function has_module(name)
 	return pcall(require, name)
 end
 
+-- Return whether one tree-sitter query kind is currently loaded.
+-- 返回当前是否加载了一种树保姆查询类型。
 local function query_loaded(kind)
 	local parser = config.values.parser.name
 	local loaded, query = pcall(vim.treesitter.query.get, parser, kind)
 	return loaded and query ~= nil
 end
 
+-- Check parser, query, and dependency health for UTreeSitter.
+-- 检查 UTreeSitter 的解析器、查询和依赖项运行状况。
 function M.check()
 	start("UTreeSitter.nvim")
 

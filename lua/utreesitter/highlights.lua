@@ -1,3 +1,9 @@
+-- Author: Ame林汀
+-- Website: vlicecream.github.io
+-- File: lua/utreesitter/highlights.lua
+-- Purpose: Define highlight groups used by UTreeSitter parser captures.
+-- License: MIT
+
 local config = require("utreesitter.config")
 
 local M = {}
@@ -28,6 +34,8 @@ local links = {
 	["@macro.unreal_cpp"] = "@function.macro",
 }
 
+-- Apply the highlight groups used by UTreeSitter captures.
+-- 应用 UTreeSitter 捕获所使用的突出显示组。
 function M.apply()
 	if config.values.highlight.default_links == false then
 		return
@@ -38,6 +46,8 @@ function M.apply()
 	end
 end
 
+-- Apply highlights and return the highlight module API.
+-- 应用高亮并返回高亮模块API。
 function M.setup()
 	M.apply()
 	vim.api.nvim_create_autocmd("ColorScheme", {

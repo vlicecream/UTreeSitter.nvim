@@ -1,5 +1,13 @@
+-- Author: Ame林汀
+-- Website: vlicecream.github.io
+-- File: lua/utreesitter/commands.lua
+-- Purpose: Register and clear the user commands exposed by UTreeSitter.
+-- License: MIT
+
 local M = {}
 
+-- Register the user commands exposed by UTreeSitter.
+-- 注册 UTreeSitter 公开的用户命令。
 function M.setup()
 	pcall(vim.api.nvim_del_user_command, "UTreeSitterInstall")
 	pcall(vim.api.nvim_del_user_command, "UTreeSitterReinstall")
@@ -23,6 +31,8 @@ function M.setup()
 	end, { desc = "Inspect the current buffer's Unreal tree-sitter state" })
 end
 
+-- Remove the user commands registered by UTreeSitter.
+-- 删除UTreeSitter注册的用户命令。
 function M.reset()
 	pcall(vim.api.nvim_del_user_command, "UTreeSitterInstall")
 	pcall(vim.api.nvim_del_user_command, "UTreeSitterReinstall")

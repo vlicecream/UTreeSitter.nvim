@@ -1,3 +1,9 @@
+-- Author: Ame林汀
+-- Website: vlicecream.github.io
+-- File: lua/utreesitter/init.lua
+-- Purpose: Install parsers, attach them to buffers, and manage the main UTreeSitter lifecycle.
+-- License: MIT
+
 local config = require("utreesitter.config")
 local filetype = require("utreesitter.filetype")
 local parsers = require("utreesitter.parsers")
@@ -10,23 +16,33 @@ local install_command_started = false
 local pending_buffers = {}
 local setup_done = false
 
+-- Return the parser name configured for Unreal C++ buffers.
+-- 返回为 Unreal C++ 缓冲区配置的解析器名称。
 local function parser_name()
 	return config.values.parser.name
 end
 
+-- Return the retry budget used while waiting for parser installation to finish.
+-- 返回等待解析器安装完成时使用的重试预算。
 local function install_retries()
 	return math.max(config.values.install.retries or 0, 600)
 end
 
+-- Send one UTreeSitter notification with the standard title.
+-- 发送一份带有标准标题的 UTreeSitter 通知。
 local function notify(message, level)
 	vim.notify(message, level or vim.log.levels.INFO, { title = "UTreeSitter.nvim" })
 end
 
+-- Collect the filesystem paths where the Unreal parser binary may exist.
+-- 收集 Unreal 解析器二进制文件可能存在的文件系统路径。
 local function parser_paths()
 	local name = parser_name()
 	local paths = {}
 	local seen = {}
 
+	-- Add one parser path candidate when it is non-empty and not duplicated.
+	-- 当候选解析器路径非空且不重复时，添加一个。
 	local function add(path)
 		if path and path ~= "" then
 			local normalized = vim.fs.normalize(path)
@@ -37,6 +53,8 @@ local function parser_paths()
 		end
 	end
 
+	-- Add parser binary candidates from one parser install directory.
+	-- 从一个解析器安装目录添加解析器二进制候选。
 	local function add_from_dir(dir)
 		if not dir or dir == "" then
 			return
@@ -60,6 +78,8 @@ local function parser_paths()
 	return paths
 end
 
+-- Return whether the Unreal parser binary is already installed.
+-- 返回 Unreal 解析器二进制文件是否已安装。
 function M.parser_installed()
 	for _, path in ipairs(parser_paths()) do
 		if vim.fn.filereadable(path) == 1 then
@@ -69,6 +89,8 @@ function M.parser_installed()
 	return false, nil
 end
 
+-- Register the Unreal parser binary with Neovim when it is installed.
+-- 安装时向 Neovim 注册 Unreal 解析器二进制文件。
 local function ensure_language()
 	local installed, path = M.parser_installed()
 	if not installed then
@@ -79,12 +101,16 @@ local function ensure_language()
 	return ok
 end
 
+-- Return whether the Unreal parser can attach to one buffer right now.
+-- 返回虚幻解析器现在是否可以附加到一个缓冲区。
 function M.parser_can_attach(bufnr)
 	ensure_language()
 	local ok, parser_or_err = pcall(vim.treesitter.get_parser, bufnr or 0, parser_name())
 	return ok and parser_or_err ~= nil, parser_or_err
 end
 
+-- Return whether nvim-treesitter is available and parser definitions are registered.
+-- 返回 nvim-treesitter 是否可用以及解析器定义是否已注册。
 local function treesitter_ready()
 	local ok, ts = pcall(require, "nvim-treesitter")
 	if not ok or type(ts.install) ~= "function" then
@@ -95,6 +121,8 @@ local function treesitter_ready()
 	return parsers.is_registered()
 end
 
+-- Start parser installation once and avoid duplicate install commands.
+-- 启动解析器安装一次并避免重复的安装命令。
 local function run_parser_install()
 	if install_command_started then
 		return true
@@ -110,6 +138,8 @@ local function run_parser_install()
 	return ok
 end
 
+-- Retry parser attachment for buffers that were waiting on installation.
+-- 重试正在等待安装的缓冲区的解析器附件。
 local function retry_pending()
 	local pending = pending_buffers
 	pending_buffers = {}
@@ -126,6 +156,8 @@ local function retry_pending()
 	end
 end
 
+-- Return whether any pending buffer can now attach to the parser.
+-- 返回任何挂起的缓冲区现在是否可以附加到解析器。
 local function any_pending_can_attach()
 	for bufnr, _ in pairs(pending_buffers) do
 		if M.parser_can_attach(bufnr) then
@@ -135,7 +167,13 @@ local function any_pending_can_attach()
 	return false
 end
 
+-- Poll parser installation progress and retry attachment until it succeeds or times out.
+-- 轮询解析器安装进度并重试附件，直到成功或超时。
 local function install_with_retry(remaining)
+	-- Keep retrying from the editor side because :TSInstall may finish after the
+	-- initial request returns, and pending buffers should attach automatically.
+	-- 这里在编辑器侧持续重试，因为 :TSInstall 可能会在初次请求返回后才完成，
+	-- 等待中的缓冲区应该在安装完成后自动附加解析器。
 	if remaining <= 0 then
 		installing = false
 		install_command_started = false
@@ -185,6 +223,8 @@ local function install_with_retry(remaining)
 	end, config.values.install.retry_delay_ms)
 end
 
+-- Start installing the Unreal parser and return whether it is already available.
+-- 开始安装Unreal解析器并返回它是否已经可用。
 function M.install()
 	install_command_started = false
 	parsers.register()
@@ -200,6 +240,8 @@ function M.install()
 	return installed
 end
 
+-- Uninstall and then reinstall the Unreal parser.
+-- 卸载并重新安装 Unreal 解析器。
 function M.reinstall()
 	parsers.register()
 	if vim.fn.exists(":TSUninstall") == 2 then
@@ -208,6 +250,8 @@ function M.reinstall()
 	return M.install()
 end
 
+-- Attach the Unreal parser and highlights to one buffer when possible.
+-- 如果可能，将虚幻解析器和突出显示附加到一个缓冲区。
 function M.activate_buffer(bufnr)
 	bufnr = bufnr or vim.api.nvim_get_current_buf()
 	if not vim.api.nvim_buf_is_valid(bufnr) then
@@ -236,6 +280,8 @@ function M.activate_buffer(bufnr)
 	install_with_retry(install_retries())
 end
 
+-- Activate UTreeSitter on every currently loaded matching buffer.
+-- 在每个当前加载的匹配缓冲区上激活 UTreeSitter。
 local function activate_existing_buffers()
 	parsers.register()
 	for _, bufnr in ipairs(vim.api.nvim_list_bufs()) do
@@ -245,6 +291,8 @@ local function activate_existing_buffers()
 	end
 end
 
+-- Ensure parser installation starts when the parser is still missing.
+-- 确保在解析器仍然丢失时开始解析器安装。
 function M.ensure_installed()
 	if config.values.install.auto_install == false then
 		return
@@ -266,12 +314,16 @@ function M.ensure_installed()
 	install_with_retry(install_retries())
 end
 
+-- Return whether one tree-sitter query kind is currently loaded.
+-- 返回当前是否加载了一种树保姆查询类型。
 local function query_loaded(kind)
 	ensure_language()
 	local ok, query = pcall(vim.treesitter.query.get, parser_name(), kind)
 	return ok and query ~= nil
 end
 
+-- Return an information table that summarizes current parser and query state.
+-- 返回总结当前解析器和查询状态的信息表。
 function M.info()
 	local bufnr = vim.api.nvim_get_current_buf()
 	local buffer_path = vim.api.nvim_buf_get_name(bufnr)
@@ -289,10 +341,14 @@ function M.info()
 	}
 end
 
+-- Notify the user with the current parser and query state summary.
+-- 通知用户当前解析器和查询状态摘要。
 function M.notify_info()
 	notify(table.concat(M.info(), "\n"))
 end
 
+-- Open an inspection window for the current buffer parser state.
+-- 打开当前缓冲区解析器状态的检查窗口。
 function M.inspect_buffer()
 	local bufnr = vim.api.nvim_get_current_buf()
 	if vim.bo[bufnr].filetype ~= parser_name() then
@@ -308,6 +364,8 @@ function M.inspect_buffer()
 	end
 end
 
+-- Set up UTreeSitter configuration, commands, filetypes, and parser installation hooks.
+-- 设置 UTreeSitter 配置、命令、文件类型和解析器安装挂钩。
 function M.setup(opts)
 	M.reset()
 	setup_done = true
@@ -360,10 +418,14 @@ function M.setup(opts)
 	vim.defer_fn(M.ensure_installed, 1500)
 end
 
+-- Return whether UTreeSitter setup has already completed.
+-- 返回 UTreeSitter 设置是否已完成。
 function M.is_setup()
 	return setup_done
 end
 
+-- Reset UTreeSitter commands, autocmds, and internal install state.
+-- 重置 UTreeSitter 命令、自动命令和内部安装状态。
 function M.reset()
 	installing = false
 	install_command_started = false

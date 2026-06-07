@@ -1,3 +1,9 @@
+-- Author: Ame林汀
+-- Website: vlicecream.github.io
+-- File: lua/utreesitter/config.lua
+-- Purpose: Store default UTreeSitter settings and merge user overrides.
+-- License: MIT
+
 local M = {}
 
 local defaults = {
@@ -39,6 +45,8 @@ local defaults = {
 
 M.values = vim.deepcopy(defaults)
 
+-- Merge user options into the default UTreeSitter configuration.
+-- 将用户选项合并到默认的 UTreeSitter 配置中。
 function M.setup(opts)
 	M.values = vim.tbl_deep_extend("force", vim.deepcopy(defaults), opts or {})
 	return M.values

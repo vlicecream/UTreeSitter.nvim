@@ -1,3 +1,11 @@
+-- Author: Ame林汀
+-- Website: vlicecream.github.io
+-- File: plugin/utreesitter.lua
+-- Purpose: Reload and bootstrap the UTreeSitter plugin entrypoint.
+-- License: MIT
+
+-- Unload cached UTreeSitter modules so re-sourcing the plugin resets state cleanly.
+-- 卸载缓存的 UTreeSitter 模块，以便重新配置插件以干净地重置状态。
 local function unload_utreesitter()
 	local ok, existing = pcall(require, "utreesitter")
 	if ok and type(existing) == "table" and type(existing.reset) == "function" then
