@@ -17,8 +17,7 @@ end
 
 -- Return the bundled parser source directory shipped with the plugin.
 -- 返回插件附带的捆绑解析器源目录。
-local function bundled_root()
-	local parser = config.values.parser
+local function bundled_root(parser)
 	local root = parser.bundled_path or plugin_root()
 	if parser.use_bundled == false then
 		return nil
@@ -29,18 +28,49 @@ local function bundled_root()
 	end
 end
 
--- Return the parser source directory that should be installed for unreal_cpp.
--- 返回应该为 unreal_cpp 安装的解析器源目录。
-function M.install_source()
-	local parser = config.values.parser
-	return bundled_root() or parser.repo
+-- Return the configured parser spec for the requested parser name.
+-- 返回请求解析器名称对应的配置规格。
+function M.spec(name)
+	name = name or config.values.parser.name
+	if config.values.parser and config.values.parser.name == name then
+		return config.values.parser
+	end
+
+	local verse = config.values.verse
+	if verse and verse.enable ~= false and verse.parser and verse.parser.name == name then
+		return verse.parser
+	end
+
+	return nil
+end
+
+-- Return the enabled custom parser specs managed by UTreeSitter.
+-- 返回由 UTreeSitter 管理且启用的自定义解析器规格。
+function M.enabled_specs()
+	local specs = {}
+	if config.values.parser then
+		table.insert(specs, config.values.parser)
+	end
+
+	local verse = config.values.verse
+	if verse and verse.enable ~= false and verse.parser then
+		table.insert(specs, verse.parser)
+	end
+
+	return specs
+end
+
+-- Return the parser source directory that should be installed for one parser.
+-- 返回某个解析器应该使用的源码目录。
+function M.install_source(name)
+	local parser = M.spec(name) or config.values.parser
+	return bundled_root(parser) or parser.repo
 end
 
 -- Build the install-info table consumed by nvim-treesitter.
 -- 构建 nvim-treesitter 使用的安装信息表。
-local function install_info()
-	local parser = config.values.parser
-	local source = M.install_source()
+local function install_info(parser)
+	local source = M.install_source(parser.name)
 	local info = {
 		files = parser.files,
 		queries = parser.queries,
@@ -60,20 +90,21 @@ end
 
 -- Build the parser definition registered with nvim-treesitter.
 -- 构建使用 nvim-treesitter 注册的解析器定义。
-local function parser_definition()
+local function parser_definition(parser)
 	return {
-		install_info = install_info(),
-		filetype = config.values.parser.name,
+		install_info = install_info(parser),
+		filetype = parser.name,
 		maintainers = { "@vlicecream" },
 		tier = 2,
 	}
 end
 
--- Augment the nvim-treesitter parser table with bundled Unreal parsers.
--- 使用捆绑的 Unreal 解析器扩充 nvim-treesitter 解析器表。
+-- Augment the nvim-treesitter parser table with all enabled custom parsers.
+-- 使用所有已启用的自定义解析器扩充 nvim-treesitter 解析器表。
 local function augment(parsers)
-	local name = config.values.parser.name
-	parsers[name] = vim.tbl_deep_extend("force", parsers[name] or {}, parser_definition())
+	for _, parser in ipairs(M.enabled_specs()) do
+		parsers[parser.name] = vim.tbl_deep_extend("force", parsers[parser.name] or {}, parser_definition(parser))
+	end
 	return parsers
 end
 
@@ -142,16 +173,17 @@ function M.install_preload()
 	end
 end
 
--- Return whether the Unreal parser definition is already registered.
--- 返回 Unreal 解析器定义是否已注册。
-function M.is_registered()
+-- Return whether one custom parser definition is already registered.
+-- 返回某个自定义解析器定义是否已注册。
+function M.is_registered(name)
+	name = name or config.values.parser.name
 	local ok, parsers = pcall(require, "nvim-treesitter.parsers")
 	if not ok or type(parsers) ~= "table" then
 		return false
 	end
 
 	local configs = type(parsers.get_parser_configs) == "function" and parsers.get_parser_configs() or parsers
-	return type(configs) == "table" and configs[config.values.parser.name] ~= nil
+	return type(configs) == "table" and configs[name] ~= nil
 end
 
 -- Register parser definitions as part of module setup.

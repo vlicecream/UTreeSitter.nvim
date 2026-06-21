@@ -18,6 +18,18 @@ local function extension_set()
 	return set
 end
 
+-- Return the supported Verse file extensions as a lookup set.
+-- 返回受支持的 Verse 文件扩展名查找集。
+local function verse_extension_set()
+	local set = {}
+	local verse = config.values.verse or {}
+	local filetype = verse.filetype or {}
+	for _, ext in ipairs(filetype.extensions or {}) do
+		set[ext] = true
+	end
+	return set
+end
+
 -- Normalize one filesystem path to forward-slash form.
 -- 将一个文件系统路径规范为正斜杠形式。
 local function normalize(path)
@@ -68,6 +80,13 @@ local function has_supported_extension(path)
 	return ext and extension_set()[ext] == true
 end
 
+-- Return whether one path ends with a supported Verse extension.
+-- 返回路径是否以受支持的 Verse 扩展结尾。
+local function has_supported_verse_extension(path)
+	local ext = path and path:match("%.([^.\\/]*)$")
+	return ext and verse_extension_set()[ext] == true
+end
+
 -- Return the parent directory for one normalized path.
 -- 返回一个标准化路径的父目录。
 local function dirname(path)
@@ -89,8 +108,16 @@ local function detect_special(path)
 		return "cs"
 	end
 
+	if normalized:match("%.vproject$") or normalized:match("%.uefnproject$") then
+		return "json"
+	end
+
 	if normalized:match("%.hlsl$") or normalized:match("%.hlsli$") or normalized:match("%.usf$") or normalized:match("%.ush$") then
 		return preferred_shader_filetype()
+	end
+
+	if normalized:match("%.verse$") then
+		return "verse"
 	end
 end
 
@@ -161,6 +188,9 @@ function M.detect(path)
 
 	local values = config.values
 	if not has_supported_extension(path) then
+		if values.verse and values.verse.enable ~= false and has_supported_verse_extension(path) then
+			return values.verse.parser.name
+		end
 		return nil
 	end
 
@@ -224,6 +254,15 @@ function M.setup()
 				return M.detect(path)
 			end,
 			[".*%.ush"] = function(path)
+				return M.detect(path)
+			end,
+			[".*%.verse"] = function(path)
+				return M.detect(path)
+			end,
+			[".*%.vproject"] = function(path)
+				return M.detect(path)
+			end,
+			[".*%.uefnproject"] = function(path)
 				return M.detect(path)
 			end,
 		},

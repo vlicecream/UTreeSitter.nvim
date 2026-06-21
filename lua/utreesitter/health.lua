@@ -30,6 +30,18 @@ local function query_loaded(kind)
 	return loaded and query ~= nil
 end
 
+-- Return whether one Verse query kind is currently loaded.
+-- 返回当前是否加载了一种 Verse 查询类型。
+local function verse_query_loaded(kind)
+	local verse = config.values.verse
+	if not verse or verse.enable == false or not verse.parser then
+		return false
+	end
+
+	local loaded, query = pcall(vim.treesitter.query.get, verse.parser.name, kind)
+	return loaded and query ~= nil
+end
+
 -- Check parser, query, and dependency health for UTreeSitter.
 -- 检查 UTreeSitter 的解析器、查询和依赖项运行状况。
 function M.check()
@@ -66,6 +78,31 @@ function M.check()
 		ok("highlights query loaded")
 	else
 		warn("highlights query cannot be loaded from runtimepath")
+	end
+
+	local verse = config.values.verse
+	if verse and verse.enable ~= false and verse.parser then
+		if parsers.is_registered(verse.parser.name) then
+			ok("verse parser config registered")
+			info("verse install source: " .. tostring(parsers.install_source(verse.parser.name)))
+		else
+			warn("verse parser config is not registered")
+		end
+
+		local verse_installed, verse_install_path = require("utreesitter").parser_installed(verse.parser.name)
+		if verse_installed then
+			ok("verse parser installed: " .. verse_install_path)
+		else
+			warn("verse parser is not installed", {
+				"Run :UTreeSitterInstall.",
+			})
+		end
+
+		if verse_query_loaded("highlights") then
+			ok("verse highlights query loaded")
+		else
+			warn("verse highlights query cannot be loaded from runtimepath")
+		end
 	end
 
 	local bufnr = vim.api.nvim_get_current_buf()

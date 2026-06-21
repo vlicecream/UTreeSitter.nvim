@@ -13,6 +13,7 @@ Neovim parser, filetype, and highlight integration for Unreal Engine source file
 It owns:
 
 - `unreal_cpp` parser registration for `nvim-treesitter`
+- optional `verse` parser registration for `nvim-treesitter`
 - runtime exposure of `queries/unreal_cpp`
 - Unreal filetype detection
 - automatic parser installation
@@ -25,6 +26,7 @@ The grammar source itself lives in [`UTreeSitter`](https://github.com/vlicecream
 
 - registers the bundled `unreal_cpp` parser before installation
 - installs `unreal_cpp` automatically after the plugin is loaded
+- installs `verse` automatically when Verse support is enabled
 - installs upstream `hlsl` alongside `unreal_cpp`
 - activates highlights without requiring a Neovim restart
 - maps Unreal-specific files to the correct filetypes
@@ -34,6 +36,8 @@ The grammar source itself lives in [`UTreeSitter`](https://github.com/vlicecream
 | File | Filetype |
 | --- | --- |
 | Unreal C/C++ source under Unreal project layout | `unreal_cpp` |
+| `.verse` | `verse` |
+| `.vproject`, `.uefnproject` | `json` |
 | `.uproject`, `.uplugin` | `json` |
 | `.Build.cs`, `.Target.cs` | `cs` |
 | `.hlsl`, `.hlsli`, `.usf`, `.ush` | `hlsl` when available, otherwise `cpp` |
@@ -103,6 +107,14 @@ require("utreesitter").setup({
     repo = "https://github.com/vlicecream/UTreeSitter",
     use_bundled = true,
   },
+  verse = {
+    enable = true,
+    parser = {
+      name = "verse",
+      repo = "https://github.com/verse-lang/tree-sitter-verse",
+      use_bundled = false,
+    },
+  },
   filetype = {
     enable = true,
     unreal_only = true,
@@ -155,6 +167,7 @@ MIT
 它负责：
 
 - 向 `nvim-treesitter` 注册 `unreal_cpp` parser
+- 可选注册 `verse` parser
 - 把 `queries/unreal_cpp` 暴露到 runtimepath
 - Unreal 文件的 filetype 检测
 - parser 自动安装
@@ -167,6 +180,7 @@ MIT
 
 - 在安装前先注册 bundled `unreal_cpp` parser
 - 插件加载后自动安装 `unreal_cpp`
+- 启用 Verse 支持时自动安装 `verse`
 - 安装 `unreal_cpp` 时顺带安装上游 `hlsl`
 - 安装完成后自动附加高亮，不需要重启 Neovim
 - 给 Unreal 特殊文件分配正确 filetype
@@ -176,6 +190,8 @@ MIT
 | 文件 | filetype |
 | --- | --- |
 | Unreal 工程布局下的 C/C++ 源文件 | `unreal_cpp` |
+| `.verse` | `verse` |
+| `.vproject`, `.uefnproject` | `json` |
 | `.uproject`, `.uplugin` | `json` |
 | `.Build.cs`, `.Target.cs` | `cs` |
 | `.hlsl`, `.hlsli`, `.usf`, `.ush` | 优先 `hlsl`，否则回退到 `cpp` |
@@ -244,6 +260,14 @@ require("utreesitter").setup({
     name = "unreal_cpp",
     repo = "https://github.com/vlicecream/UTreeSitter",
     use_bundled = true,
+  },
+  verse = {
+    enable = true,
+    parser = {
+      name = "verse",
+      repo = "https://github.com/verse-lang/tree-sitter-verse",
+      use_bundled = false,
+    },
   },
   filetype = {
     enable = true,

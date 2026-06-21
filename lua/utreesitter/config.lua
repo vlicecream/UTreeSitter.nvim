@@ -17,6 +17,25 @@ local defaults = {
 		bundled_path = nil,
 		register_preload = true,
 	},
+	verse = {
+		enable = true,
+		parser = {
+			name = "verse",
+			repo = "https://github.com/verse-lang/tree-sitter-verse",
+			branch = "master",
+			files = { "src/parser.c" },
+			queries = "queries/verse",
+			use_bundled = false,
+			bundled_path = nil,
+			register_preload = true,
+		},
+		filetype = {
+			enable = true,
+			extensions = {
+				"verse",
+			},
+		},
+	},
 	filetype = {
 		enable = true,
 		unreal_only = true,

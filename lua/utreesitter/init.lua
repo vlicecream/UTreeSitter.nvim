@@ -22,6 +22,50 @@ local function parser_name()
 	return config.values.parser.name
 end
 
+-- Return whether Verse support is enabled.
+-- 返回是否启用了 Verse 支持。
+local function verse_enabled()
+	return config.values.verse and config.values.verse.enable ~= false
+end
+
+-- Return the parser name configured for Verse buffers.
+-- 返回为 Verse 缓冲区配置的解析器名称。
+local function verse_parser_name()
+	return verse_enabled() and config.values.verse.parser.name or nil
+end
+
+-- Return the list of custom parser names managed by UTreeSitter.
+-- 返回由 UTreeSitter 管理的自定义解析器名称列表。
+local function managed_parser_names()
+	local names = { parser_name() }
+	local verse_name = verse_parser_name()
+	if verse_name and verse_name ~= parser_name() then
+		table.insert(names, verse_name)
+	end
+	return names
+end
+
+-- Return whether the buffer filetype maps to one managed custom parser.
+-- 返回缓冲区 filetype 是否映射到某个受管自定义解析器。
+local function target_parser_name(bufnr)
+	bufnr = bufnr or vim.api.nvim_get_current_buf()
+	local filetype_name = vim.bo[bufnr].filetype
+	for _, name in ipairs(managed_parser_names()) do
+		if filetype_name == name then
+			return name
+		end
+	end
+	return nil
+end
+
+-- Return the install target list for all parser dependencies.
+-- 返回所有解析器依赖的安装目标列表。
+local function install_targets()
+	local targets = managed_parser_names()
+	table.insert(targets, "hlsl")
+	return targets
+end
+
 -- Return the retry budget used while waiting for parser installation to finish.
 -- 返回等待解析器安装完成时使用的重试预算。
 local function install_retries()
@@ -36,8 +80,8 @@ end
 
 -- Collect the filesystem paths where the Unreal parser binary may exist.
 -- 收集 Unreal 解析器二进制文件可能存在的文件系统路径。
-local function parser_paths()
-	local name = parser_name()
+local function parser_paths(name)
+	name = name or parser_name()
 	local paths = {}
 	local seen = {}
 
@@ -80,8 +124,8 @@ end
 
 -- Return whether the Unreal parser binary is already installed.
 -- 返回 Unreal 解析器二进制文件是否已安装。
-function M.parser_installed()
-	for _, path in ipairs(parser_paths()) do
+function M.parser_installed(name)
+	for _, path in ipairs(parser_paths(name)) do
 		if vim.fn.filereadable(path) == 1 then
 			return true, path
 		end
@@ -91,21 +135,23 @@ end
 
 -- Register the Unreal parser binary with Neovim when it is installed.
 -- 安装时向 Neovim 注册 Unreal 解析器二进制文件。
-local function ensure_language()
-	local installed, path = M.parser_installed()
+local function ensure_language(name)
+	name = name or parser_name()
+	local installed, path = M.parser_installed(name)
 	if not installed then
 		return false
 	end
 
-	local ok, err = pcall(vim.treesitter.language.add, parser_name(), { path = path })
+	local ok, err = pcall(vim.treesitter.language.add, name, { path = path })
 	return ok
 end
 
 -- Return whether the Unreal parser can attach to one buffer right now.
 -- 返回虚幻解析器现在是否可以附加到一个缓冲区。
-function M.parser_can_attach(bufnr)
-	ensure_language()
-	local ok, parser_or_err = pcall(vim.treesitter.get_parser, bufnr or 0, parser_name())
+function M.parser_can_attach(bufnr, name)
+	name = name or target_parser_name(bufnr) or parser_name()
+	ensure_language(name)
+	local ok, parser_or_err = pcall(vim.treesitter.get_parser, bufnr or 0, name)
 	return ok and parser_or_err ~= nil, parser_or_err
 end
 
@@ -130,7 +176,7 @@ local function run_parser_install()
 
 	install_command_started = true
 	local ok = pcall(function()
-		require("nvim-treesitter").install({ parser_name(), "hlsl" }, { max_jobs = 1 })
+		require("nvim-treesitter").install(install_targets(), { max_jobs = 1 })
 	end)
 	if not ok then
 		install_command_started = false
@@ -150,7 +196,7 @@ local function retry_pending()
 	end
 
 	for _, bufnr in ipairs(vim.api.nvim_list_bufs()) do
-		if vim.api.nvim_buf_is_valid(bufnr) and vim.bo[bufnr].filetype == parser_name() then
+		if vim.api.nvim_buf_is_valid(bufnr) and target_parser_name(bufnr) then
 			M.activate_buffer(bufnr)
 		end
 	end
@@ -160,7 +206,8 @@ end
 -- 返回任何挂起的缓冲区现在是否可以附加到解析器。
 local function any_pending_can_attach()
 	for bufnr, _ in pairs(pending_buffers) do
-		if M.parser_can_attach(bufnr) then
+		local name = target_parser_name(bufnr)
+		if name and M.parser_can_attach(bufnr, name) then
 			return true
 		end
 	end
@@ -177,12 +224,22 @@ local function install_with_retry(remaining)
 	if remaining <= 0 then
 		installing = false
 		install_command_started = false
-		notify("unreal_cpp parser install did not finish before retries ended", vim.log.levels.WARN)
+		notify("custom parser install did not finish before retries ended", vim.log.levels.WARN)
 		return
 	end
 
-	if M.parser_installed() then
-		ensure_language()
+	local all_installed = true
+	for _, name in ipairs(managed_parser_names()) do
+		if not M.parser_installed(name) then
+			all_installed = false
+			break
+		end
+	end
+
+	if all_installed then
+		for _, name in ipairs(managed_parser_names()) do
+			ensure_language(name)
+		end
 		installing = false
 		install_command_started = false
 		retry_pending()
@@ -206,13 +263,13 @@ local function install_with_retry(remaining)
 	end
 
 	if not install_command_started then
-		notify("Installing unreal_cpp and hlsl parsers")
+		notify("Installing Unreal and Verse parser dependencies")
 	end
 	run_parser_install()
 
-	if M.parser_installed() or any_pending_can_attach() then
-		ensure_language()
+	if any_pending_can_attach() then
 		installing = false
+		install_command_started = false
 		retry_pending()
 		shaders.ensure_installed()
 		return
@@ -233,9 +290,13 @@ function M.install()
 		return false
 	end
 
-	local installed = M.parser_installed()
-	if installed then
-		ensure_language()
+	local installed = true
+	for _, name in ipairs(managed_parser_names()) do
+		if M.parser_installed(name) then
+			ensure_language(name)
+		else
+			installed = false
+		end
 	end
 	return installed
 end
@@ -244,8 +305,10 @@ end
 -- 卸载并重新安装 Unreal 解析器。
 function M.reinstall()
 	parsers.register()
-	if vim.fn.exists(":TSUninstall") == 2 then
-		pcall(vim.cmd, "TSUninstall " .. parser_name())
+	for _, name in ipairs(managed_parser_names()) do
+		if vim.fn.exists(":TSUninstall") == 2 then
+			pcall(vim.cmd, "TSUninstall " .. name)
+		end
 	end
 	return M.install()
 end
@@ -258,12 +321,13 @@ function M.activate_buffer(bufnr)
 		return
 	end
 
-	if vim.bo[bufnr].filetype ~= parser_name() then
+	local name = target_parser_name(bufnr)
+	if not name then
 		return
 	end
 
-	if M.parser_can_attach(bufnr) then
-		pcall(vim.treesitter.start, bufnr, parser_name())
+	if M.parser_can_attach(bufnr, name) then
+		pcall(vim.treesitter.start, bufnr, name)
 		return
 	end
 
@@ -285,7 +349,7 @@ end
 local function activate_existing_buffers()
 	parsers.register()
 	for _, bufnr in ipairs(vim.api.nvim_list_bufs()) do
-		if vim.api.nvim_buf_is_valid(bufnr) and vim.bo[bufnr].filetype == parser_name() then
+		if vim.api.nvim_buf_is_valid(bufnr) and target_parser_name(bufnr) then
 			M.activate_buffer(bufnr)
 		end
 	end
@@ -298,8 +362,16 @@ function M.ensure_installed()
 		return
 	end
 
-	if M.parser_installed() then
-		ensure_language()
+	local all_installed = true
+	for _, name in ipairs(managed_parser_names()) do
+		if M.parser_installed(name) then
+			ensure_language(name)
+		else
+			all_installed = false
+		end
+	end
+
+	if all_installed then
 		activate_existing_buffers()
 		shaders.ensure_installed()
 		return
@@ -316,9 +388,10 @@ end
 
 -- Return whether one tree-sitter query kind is currently loaded.
 -- 返回当前是否加载了一种树保姆查询类型。
-local function query_loaded(kind)
-	ensure_language()
-	local ok, query = pcall(vim.treesitter.query.get, parser_name(), kind)
+local function query_loaded(kind, name)
+	name = name or parser_name()
+	ensure_language(name)
+	local ok, query = pcall(vim.treesitter.query.get, name, kind)
 	return ok and query ~= nil
 end
 
@@ -327,14 +400,24 @@ end
 function M.info()
 	local bufnr = vim.api.nvim_get_current_buf()
 	local buffer_path = vim.api.nvim_buf_get_name(bufnr)
-	local installed, install_path = M.parser_installed()
+	local installed, install_path = M.parser_installed(parser_name())
+	local verse_name = verse_parser_name()
+	local verse_installed = false
+	local verse_install_path = nil
+	if verse_name then
+		verse_installed, verse_install_path = M.parser_installed(verse_name)
+	end
 
 	return {
 		"parser: " .. parser_name(),
-		"parser registered: " .. tostring(parsers.is_registered()),
-		"install source: " .. tostring(parsers.install_source()),
+		"parser registered: " .. tostring(parsers.is_registered(parser_name())),
+		"install source: " .. tostring(parsers.install_source(parser_name())),
 		"parser installed: " .. tostring(installed) .. (install_path and " (" .. install_path .. ")" or ""),
 		"highlights query: " .. tostring(query_loaded("highlights")),
+		verse_name and ("verse parser registered: " .. tostring(parsers.is_registered(verse_name))) or nil,
+		verse_name and ("verse install source: " .. tostring(parsers.install_source(verse_name))) or nil,
+		verse_name and ("verse parser installed: " .. tostring(verse_installed) .. (verse_install_path and " (" .. verse_install_path .. ")" or "")) or nil,
+		verse_name and ("verse highlights query: " .. tostring(query_loaded("highlights", verse_name))) or nil,
 		"current filetype: " .. tostring(vim.bo[bufnr].filetype),
 		"current buffer: " .. (buffer_path ~= "" and buffer_path or "<none>"),
 		"unreal project: " .. tostring(buffer_path ~= "" and filetype.is_unreal_path(buffer_path) or false),
@@ -344,23 +427,27 @@ end
 -- Notify the user with the current parser and query state summary.
 -- 通知用户当前解析器和查询状态摘要。
 function M.notify_info()
-	notify(table.concat(M.info(), "\n"))
+	local lines = vim.tbl_filter(function(line)
+		return line ~= nil
+	end, M.info())
+	notify(table.concat(lines, "\n"))
 end
 
 -- Open an inspection window for the current buffer parser state.
 -- 打开当前缓冲区解析器状态的检查窗口。
 function M.inspect_buffer()
 	local bufnr = vim.api.nvim_get_current_buf()
-	if vim.bo[bufnr].filetype ~= parser_name() then
-		notify("current buffer filetype is " .. tostring(vim.bo[bufnr].filetype) .. ", not " .. parser_name(), vim.log.levels.WARN)
+	local name = target_parser_name(bufnr)
+	if not name then
+		notify("current buffer filetype is " .. tostring(vim.bo[bufnr].filetype) .. ", not a managed parser filetype", vim.log.levels.WARN)
 		return
 	end
 
-	local ok, result = M.parser_can_attach(bufnr)
+	local ok, result = M.parser_can_attach(bufnr, name)
 	if ok and result then
-		notify("unreal_cpp parser can attach to the current buffer")
+		notify(name .. " parser can attach to the current buffer")
 	else
-		notify("unreal_cpp parser cannot attach: " .. tostring(result), vim.log.levels.WARN)
+		notify(name .. " parser cannot attach: " .. tostring(result), vim.log.levels.WARN)
 	end
 end
 
@@ -376,8 +463,8 @@ function M.setup(opts)
 	require("utreesitter.commands").setup()
 
 	vim.api.nvim_create_autocmd("FileType", {
-		pattern = parser_name(),
-		group = vim.api.nvim_create_augroup("UTreeSitterUnrealCppActivate", { clear = true }),
+		pattern = managed_parser_names(),
+		group = vim.api.nvim_create_augroup("UTreeSitterCustomActivate", { clear = true }),
 		callback = function(ev)
 			if config.values.highlight.auto_start then
 				vim.schedule(function()
@@ -440,7 +527,7 @@ function M.reset()
 	end)
 
 	for _, group in ipairs({
-		"UTreeSitterUnrealCppActivate",
+		"UTreeSitterCustomActivate",
 		"UTreeSitterHlslActivate",
 		"UTreeSitterLazyRetry",
 		"UTreeSitterFiletype",
